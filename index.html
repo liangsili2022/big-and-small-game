@@ -1,1 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Big &amp; Small - 猜牌游戏</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      color: #f0c040;
+      text-shadow: 0 0 12px #f0c04066;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-bottom: 28px;
+    }
+
+    .scoreboard {
+      display: flex;
+      gap: 32px;
+      margin-bottom: 28px;
+    }
+
+    .score-box {
+      text-align: center;
+    }
+
+    .score-box .label {
+      font-size: 0.75rem;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .score-box .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #f0c040;
+    }
+
+    .deck-info {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 24px;
+    }
+
+    /* Cards */
+    .cards-area {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      margin-bottom: 32px;
+      min-height: 160px;
+    }
+
+    .card {
+      width: 100px;
+      height: 145px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: bold;
+      user-select: none;
+      box-shadow: 0 4px 18px #0008;
+      position: relative;
+      transition: transform 0.2s;
+    }
+
+    .card.face-up {
+      background: #fff;
+    }
+
+    .card.face-down {
+      background: linear-gradient(135deg, #2c3e7a 25%, #1a2550 75%);
+      background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 8px,
+        rgba(255,255,255,0.05) 8px,
+        rgba(255,255,255,0.05) 9px
+      );
+    }
+
+    .card .rank {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .card .suit {
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+
+    .card .corner {
+      position: absolute;
+      font-size: 0.75rem;
+      line-height: 1.1;
+      text-align: center;
+    }
+
+    .card .corner.top-left { top: 6px; left: 8px; }
+    .card .corner.bottom-right { bottom: 6px; right: 8px; transform: rotate(180deg); }
+
+    .card.red { color: #c0392b; }
+    .card.black { color: #111; }
+
+    .arrow {
+      font-size: 2rem;
+      color: #555;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 12px 32px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    button:active { transform: scale(0.96); }
+    button:disabled { opacity: 0.35; cursor: default; }
+
+    .btn-bigger {
+      background: #27ae60;
+      color: #fff;
+    }
+
+    .btn-smaller {
+      background: #e74c3c;
+      color: #fff;
+    }
+
+    .btn-deal {
+      background: #f0c040;
+      color: #1a1a2e;
+    }
+
+    /* Message */
+    .message {
+      min-height: 36px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      text-align: center;
+      padding: 8px 20px;
+      border-radius: 8px;
+      transition: opacity 0.3s;
+    }
+
+    .message.win  { color: #2ecc71; background: #2ecc7120; }
+    .message.lose { color: #e74c3c; background: #e74c3c20; }
+    .message.info { color: #f0c040; background: #f0c04020; }
+    .message.hidden { opacity: 0; }
+
+    /* Rules */
+    .rules {
+      margin-top: 28px;
+      max-width: 380px;
+      background: #ffffff0d;
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-size: 0.8rem;
+      color: #aaa;
+      line-height: 1.7;
+    }
+
+    .rules h2 {
+      color: #ddd;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Big &amp; Small</h1>
+<p class="subtitle">预测下一张牌是更大还是更小</p>
+
+<div class="scoreboard">
+  <div class="score-box">
+    <div class="label">分数</div>
+    <div class="value" id="score">0</div>
+  </div>
+  <div class="score-box">
+    <div class="label">连胜</div>
+    <div class="value" id="streak">0</div>
+  </div>
+  <div class="score-box">
+    <div class="label">最高分</div>
+    <div class="value" id="best">0</div>
+  </div>
+</div>
+
+<div class="deck-info" id="deck-info">剩余 52 张牌</div>
+
+<div class="cards-area">
+  <div class="card face-down" id="current-card"></div>
+  <div class="arrow">→</div>
+  <div class="card face-down" id="next-card"></div>
+</div>
+
+<div class="btn-group">
+  <button class="btn-bigger" id="btn-bigger" onclick="guess('bigger')" disabled>▲ Bigger</button>
+  <button class="btn-smaller" id="btn-smaller" onclick="guess('smaller')" disabled>▼ Smaller</button>
+</div>
+<div class="btn-group">
+  <button class="btn-deal" id="btn-deal" onclick="startGame()">发牌开始</button>
+</div>
+
+<div class="message hidden" id="message"></div>
+
+<div class="rules">
+  <h2>玩法说明</h2>
+  点数：A=1，2-10，J=11，Q=12，K=13<br>
+  同点数时按花色比较：♠ &gt; ♥ &gt; ♦ &gt; ♣<br>
+  猜对连胜，分数倍增；猜错游戏结束<br>
+  牌堆用完自动重新洗牌
+</div>
+
+<script>
+  const SUITS  = ['♠','♥','♦','♣'];   // index 0 = highest
+  const RANKS  = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const SUIT_COLOR = { '♠': 'black', '♥': 'red', '♦': 'red', '♣': 'black' };
+
+  let deck = [];
+  let currentCard = null;
+  let score = 0;
+  let streak = 0;
+  let best = 0;
+  let waiting = false; // waiting for player to see result before next round
+
+  function cardValue(card) {
+    return { rank: RANKS.indexOf(card.rank), suit: SUITS.indexOf(card.suit) };
+  }
+
+  // Compare: positive = a > b, negative = a < b, 0 = equal
+  function compareCards(a, b) {
+    const av = cardValue(a), bv = cardValue(b);
+    if (av.rank !== bv.rank) return av.rank - bv.rank;
+    return bv.suit - av.suit; // lower SUITS index = higher suit
+  }
+
+  function buildDeck() {
+    const d = [];
+    for (const rank of RANKS) for (const suit of SUITS) d.push({ rank, suit });
+    return d;
+  }
+
+  function shuffle(d) {
+    for (let i = d.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [d[i], d[j]] = [d[j], d[i]];
+    }
+    return d;
+  }
+
+  function renderCard(el, card, faceUp) {
+    el.className = 'card ' + (faceUp ? 'face-up ' + SUIT_COLOR[card.suit] : 'face-down');
+    if (faceUp) {
+      el.innerHTML =
+        `<div class="corner top-left">${card.rank}<br>${card.suit}</div>` +
+        `<div class="rank">${card.rank}</div>` +
+        `<div class="suit">${card.suit}</div>` +
+        `<div class="corner bottom-right">${card.rank}<br>${card.suit}</div>`;
+    } else {
+      el.innerHTML = '';
+    }
+  }
+
+  function showMessage(text, type) {
+    const el = document.getElementById('message');
+    el.textContent = text;
+    el.className = 'message ' + type;
+  }
+
+  function hideMessage() {
+    document.getElementById('message').className = 'message hidden';
+  }
+
+  function updateUI() {
+    document.getElementById('score').textContent = score;
+    document.getElementById('streak').textContent = streak;
+    document.getElementById('best').textContent = best;
+    document.getElementById('deck-info').textContent = `剩余 ${deck.length} 张牌`;
+  }
+
+  function setButtons(enabled) {
+    document.getElementById('btn-bigger').disabled  = !enabled;
+    document.getElementById('btn-smaller').disabled = !enabled;
+  }
+
+  function startGame() {
+    deck = shuffle(buildDeck());
+    score = 0;
+    streak = 0;
+    currentCard = deck.pop();
+    waiting = false;
+    hideMessage();
+    renderCard(document.getElementById('current-card'), currentCard, true);
+    renderCard(document.getElementById('next-card'), { rank: '?', suit: '?' }, false);
+    setButtons(true);
+    document.getElementById('btn-deal').textContent = '重新开始';
+    updateUI();
+  }
+
+  function guess(prediction) {
+    if (waiting) return;
+
+    if (deck.length === 0) {
+      deck = shuffle(buildDeck());
+      showMessage('牌堆用完，已重新洗牌！', 'info');
+    }
+
+    const nextCard = deck.pop();
+    renderCard(document.getElementById('next-card'), nextCard, true);
+    setButtons(false);
+
+    const cmp = compareCards(nextCard, currentCard);
+    let correct = false;
+
+    if (cmp === 0) {
+      // Tie — count as correct (player can't lose on a tie)
+      correct = true;
+    } else if (prediction === 'bigger' && cmp > 0) {
+      correct = true;
+    } else if (prediction === 'smaller' && cmp < 0) {
+      correct = true;
+    }
+
+    if (correct) {
+      streak++;
+      const points = streak * 10;
+      score += points;
+      if (score > best) best = score;
+      showMessage(`✓ 正确！+${points} 分　连胜 ${streak}`, 'win');
+    } else {
+      showMessage(`✗ 错误！游戏结束，本局得分 ${score}`, 'lose');
+      streak = 0;
+    }
+
+    updateUI();
+
+    // After a short pause, advance to next round or end
+    waiting = true;
+    setTimeout(() => {
+      waiting = false;
+      if (correct) {
+        currentCard = nextCard;
+        renderCard(document.getElementById('current-card'), currentCard, true);
+        renderCard(document.getElementById('next-card'), { rank: '?', suit: '?' }, false);
+        setButtons(true);
+        hideMessage();
+      } else {
+        // Game over — reset streak but keep best; let player restart
+        score = 0;
+        streak = 0;
+        renderCard(document.getElementById('current-card'), { rank: '?', suit: '?' }, false);
+        renderCard(document.getElementById('next-card'), { rank: '?', suit: '?' }, false);
+        updateUI();
+        document.getElementById('btn-deal').textContent = '再来一局';
+      }
+    }, 1600);
+  }
+</script>
+</body>
+</html>
